@@ -28,13 +28,17 @@ const useExchangeOperations = () => {
       const sell = parseFloat(sellRate);
       const spreadValue = parseFloat(spread);
 
-      // Validações reforçadas
-      if (buy >= sell) {
-        throw new Error('A taxa de venda deve ser maior que a taxa de compra');
+      // Validação principal invertida
+      if (buy <= sell) {
+        throw new Error('A taxa de COMPRA deve ser MAIOR que a taxa de venda');
       }
 
-      const calculatedSpread = ((sell - buy) / buy * 100).toFixed(2);
-      if (Math.abs(spreadValue - calculatedSpread) > 0.01) {
+      // Cálculo do spread ajustado
+      const calculatedSpread = ((buy - sell) / sell * 100).toFixed(2);
+      
+      if (spreadValue > 10) {
+        throw new Error(`Spread máximo de 10% excedido: ${spreadValue}%`);
+      } else if (Math.abs(spreadValue - calculatedSpread) > 0.01) {
         throw new Error('Spread inconsistente com as taxas informadas');
       }
 
@@ -47,6 +51,8 @@ const useExchangeOperations = () => {
         prev.map(rate => 
           rate.currency_code === currencyCode ? {
             ...updated,
+            buy_rate: buy,
+            sell_rate: sell,
             spread: spreadValue,
             last_updated: new Date().toISOString()
           } : rate
@@ -74,5 +80,5 @@ const useExchangeOperations = () => {
     handleUpdateRates
   };
 };
-
+//teste 
 export default useExchangeOperations;
