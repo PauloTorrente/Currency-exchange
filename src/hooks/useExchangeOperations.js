@@ -13,68 +13,49 @@ const useExchangeOperations = () => {
       setExchangeRates(rates);
       setError(null);
     } catch (err) {
-      setError({
-        message: 'Falha ao carregar taxas de câmbio',
-        details: err.response?.data?.message || err.message
-      });
+      setError(err);
       setExchangeRates([]);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const handleUpdateRates = useCallback(async (currencyCode, buyRate, sellRate) => {
+  const handleUpdateRates = useCallback(async (currencyCode, buyRate, sellRate, spread) => {
     try {
       setIsLoading(true);
-      setError(null);
       
-      // Validações e formatação
       const buy = parseFloat(buyRate);
       const sell = parseFloat(sellRate);
-      
-      if (isNaN(buy) || isNaN(sell)) {
-        throw new Error('Valores devem ser números válidos');
+      const spreadValue = parseFloat(spread);
+
+      // Validações reforçadas
+      if (buy >= sell) {
+        throw new Error('A taxa de venda deve ser maior que a taxa de compra');
       }
 
-      if (sell <= buy) {
-        throw new Error('Taxa de venda deve ser maior que taxa de compra');
+      const calculatedSpread = ((sell - buy) / buy * 100).toFixed(2);
+      if (Math.abs(spreadValue - calculatedSpread) > 0.01) {
+        throw new Error('Spread inconsistente com as taxas informadas');
       }
 
-      const spread = ((sell - buy) / buy * 100).toFixed(2);
-      if (spread > 10) {
-        throw new Error(`Spread máximo de 10% excedido: ${spread}%`);
-      }
-
-      // Formata para 6 casas decimais antes de enviar
-      const formattedBuy = buy.toFixed(6);
-      const formattedSell = sell.toFixed(6);
-
-      const updatedRate = await exchangeService.updateRate(currencyCode, { 
-        buy_rate: formattedBuy,
-        sell_rate: formattedSell 
+      const updated = await exchangeService.updateRate(currencyCode, {
+        buy_rate: buy.toFixed(6),
+        sell_rate: sell.toFixed(6)
       });
 
-      // Atualiza o estado local com os dados formatados
       setExchangeRates(prev => 
         prev.map(rate => 
-          rate.currency_code === currencyCode 
-            ? { 
-                ...updatedRate,
-                buy_rate: parseFloat(formattedBuy),
-                sell_rate: parseFloat(formattedSell),
-                spread: parseFloat(spread),
-                last_updated: new Date().toISOString()
-              } 
-            : rate
+          rate.currency_code === currencyCode ? {
+            ...updated,
+            spread: spreadValue,
+            last_updated: new Date().toISOString()
+          } : rate
         )
       );
       
       return true;
     } catch (err) {
-      setError({
-        message: 'Falha ao atualizar taxas',
-        details: err.response?.data?.message || err.message
-      });
+      setError(err);
       return false;
     } finally {
       setIsLoading(false);
