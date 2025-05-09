@@ -35,63 +35,67 @@ const ButtonGroup = styled.div`
 
 const RateEditForm = ({ rate, onCancel, onSave }) => {
   const [formData, setFormData] = useState({
-    buyRate: rate.buy_rate?.toString() || '',
-    sellRate: rate.sell_rate?.toString() || '',
-    spread: rate.spread?.toString() || '0'
+    buy_rate: rate.buy_rate?.toString() || '',
+    sell_rate: rate.sell_rate?.toString() || '',
+    bank_fee: (rate.bank_fee * 100)?.toString() || '1', // Convert to percentage
+    spread: (rate.spread * 100)?.toString() || '5' // Convert to percentage
   });
 
   const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
-    const buy = parseFloat(formData.buyRate) || 0;
-    const sell = parseFloat(formData.sellRate) || 0;
+    const buy = parseFloat(formData.buy_rate) || 0;
+    const sell = parseFloat(formData.sell_rate) || 0;
     const spread = parseFloat(formData.spread) || 0;
+    const bankFee = parseFloat(formData.bank_fee) || 0;
 
-    // Validação principal modificada
+    // Validate buy > sell
     if (buy <= sell) {
-      setValidationError('Taxa de compra deve ser MAIOR que taxa de venda');
+      setValidationError('Buy rate must be GREATER than sell rate');
       return;
     }
 
-    // Cálculo do spread ajustado
-    const calculatedSpread = ((buy - sell) / sell * 100).toFixed(2);
-    
+    // Validate spread ≤ 10%
     if (spread > 10) {
-      setValidationError(`Spread máximo de 10% excedido: ${spread}%`);
-    } else if (Math.abs(spread - calculatedSpread) > 0.01) {
-      setValidationError('Spread não corresponde às taxas informadas');
-    } else {
-      setValidationError('');
+      setValidationError('Maximum spread is 10%');
+      return;
     }
+
+    // Validate bank fee ≤ 100%
+    if (bankFee > 100) {
+      setValidationError('Maximum bank fee is 100%');
+      return;
+    }
+
+    // Validate calculated spread matches input
+    const calculatedSpread = ((buy - sell) / buy * 100).toFixed(2);
+    if (Math.abs(spread - calculatedSpread) > 0.1) {
+      setValidationError(`Spread should be ~${calculatedSpread}% based on rates`);
+      return;
+    }
+
+    setValidationError('');
   }, [formData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     const numericValue = value.replace(/[^0-9.]/g, '');
     
-    setFormData(prev => {
-      const newData = {...prev, [name]: numericValue};
-      
-      // Cálculo ajustado para buy > sell
-      if (name === 'spread') {
-        const buy = parseFloat(newData.buyRate) || 0;
-        const newSell = buy / (1 + parseFloat(numericValue)/100); // Fórmula invertida
-        newData.sellRate = newSell.toFixed(6);
-      }
-      
-      return newData;
-    });
+    setFormData(prev => ({
+      ...prev,
+      [name]: numericValue
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validationError) {
-      onSave(
-        rate.currency_code,
-        formData.buyRate,
-        formData.sellRate,
-        formData.spread
-      );
+      onSave(rate.currency_code, {
+        buy_rate: parseFloat(formData.buy_rate),
+        sell_rate: parseFloat(formData.sell_rate),
+        bank_fee: parseFloat(formData.bank_fee) / 100, // Convert back to decimal
+        spread: parseFloat(formData.spread) / 100 // Convert back to decimal
+      });
     }
   };
 
@@ -101,25 +105,34 @@ const RateEditForm = ({ rate, onCancel, onSave }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <FormTitle>Editar Taxa: {rate.currency_code}</FormTitle>
+      <FormTitle>Edit Rate: {rate.currency_code}</FormTitle>
       <Form onSubmit={handleSubmit}>
         <InputField
-          label="Taxa de Compra"
-          name="buyRate"
+          label="Buy Rate (1 USDT = X)"
+          name="buy_rate"
           type="text"
-          value={formData.buyRate}
+          value={formData.buy_rate}
           onChange={handleChange}
           required
           inputMode="decimal"
         />
 
         <InputField
-          label="Taxa de Venda"
-          name="sellRate"
+          label="Sell Rate (1 USDT = X)"
+          name="sell_rate"
           type="text"
-          value={formData.sellRate}
+          value={formData.sell_rate}
           onChange={handleChange}
           required
+          inputMode="decimal"
+        />
+
+        <InputField
+          label="Bank Fee (%)"
+          name="bank_fee"
+          type="text"
+          value={formData.bank_fee}
+          onChange={handleChange}
           inputMode="decimal"
         />
 
@@ -140,10 +153,10 @@ const RateEditForm = ({ rate, onCancel, onSave }) => {
 
         <ButtonGroup>
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Cancelar
+            Cancel
           </Button>
           <Button type="submit" disabled={!!validationError}>
-            Salvar Alterações
+            Save Changes
           </Button>
         </ButtonGroup>
       </Form>
