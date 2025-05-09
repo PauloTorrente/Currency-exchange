@@ -4,7 +4,7 @@ import Badge from '../common/Badge';
 import DateFormatter from '../common/DateFormatter';
 import styled from 'styled-components';
 
-// Styled components for additional customization
+// Componentes estilizados
 const RateValue = styled.span`
   font-family: 'Roboto Mono', monospace;
   color: ${props => props.theme.colors.text};
@@ -20,45 +20,24 @@ const PercentageCell = styled(Td)`
   font-weight: 500;
 `;
 
-interface ExchangeRate {
-  currency_code: string;
-  currency_name: string;
-  rate_type: 'base' | 'fiat' | 'crypto';
-  buy_rate: number;
-  sell_rate: number;
-  bank_fee: number;
-  spread: number;
-  mid_rate?: number;
-  last_updated: string;
-}
-
-interface ExchangeTableProps {
-  exchangeRates: ExchangeRate[];
-  isLoading: boolean;
-  onEdit: (rate: ExchangeRate) => void;
-}
-
-const ExchangeTable: React.FC<ExchangeTableProps> = ({ 
-  exchangeRates, 
-  isLoading, 
-  onEdit 
-}) => {
-  if (isLoading) return <div>Loading exchange rates...</div>;
-  if (!exchangeRates.length) return <div>No exchange rates found</div>;
+const ExchangeTable = ({ exchangeRates, isLoading, onEdit }) => {
+  if (isLoading) return <div>Carregando taxas de câmbio...</div>;
+  if (!exchangeRates || exchangeRates.length === 0) return <div>Nenhuma taxa de câmbio encontrada</div>;
 
   return (
     <Table>
       <thead>
         <tr>
-          <Th>Currency</Th>
-          <Th>Type</Th>
-          <Th>Buy Rate</Th>
-          <Th>Sell Rate</Th>
-          <Th>Bank Fee</Th>
+          <Th>Código</Th>
+          <Th>Nome</Th>
+          <Th>Tipo</Th>
+          <Th>Compra</Th>
+          <Th>Venda</Th>
+          <Th>Taxa Bancária</Th>
           <Th>Spread</Th>
-          <Th>Mid Rate</Th>
-          <Th>Last Updated</Th>
-          <Th>Actions</Th>
+          <Th>Taxa Média</Th>
+          <Th>Última Atualização</Th>
+          <Th>Ações</Th>
         </tr>
       </thead>
       <tbody>
@@ -79,18 +58,18 @@ const ExchangeTable: React.FC<ExchangeTableProps> = ({
               </Badge>
             </Td>
             <Td>
-              <RateValue>{rate.buy_rate.toFixed(6)}</RateValue>
+              <RateValue>{parseFloat(rate.buy_rate).toFixed(6)}</RateValue>
             </Td>
             <Td>
-              <RateValue>{rate.sell_rate.toFixed(6)}</RateValue>
+              <RateValue>{parseFloat(rate.sell_rate).toFixed(6)}</RateValue>
             </Td>
-            <Td>{(rate.bank_fee * 100).toFixed(2)}%</Td>
+            <Td>{(parseFloat(rate.bank_fee) * 100).toFixed(2)}%</Td>
             <PercentageCell value={rate.spread}>
-              {rate.spread.toFixed(2)}%
+              {parseFloat(rate.spread).toFixed(2)}%
             </PercentageCell>
             <Td>
               <RateValue>
-                {rate.mid_rate ? rate.mid_rate.toFixed(6) : '-'}
+                {rate.mid_rate ? parseFloat(rate.mid_rate).toFixed(6) : '-'}
               </RateValue>
             </Td>
             <Td>
@@ -101,7 +80,7 @@ const ExchangeTable: React.FC<ExchangeTableProps> = ({
                 onClick={() => onEdit(rate)}
                 disabled={rate.currency_code === 'USDT'}
               >
-                Edit
+                Editar
               </ActionButton>
             </Td>
           </tr>
